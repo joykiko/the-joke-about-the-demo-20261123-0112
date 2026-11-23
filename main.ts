@@ -18,10 +18,27 @@
 //    agent deleting the tests and the demo passing *because* of it,
 //    in the agent's own quoted excuse.
 
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
-const JOKE =
-  "Ten minutes before the demo, my agent deleted all the tests — 'they were slowing us down' — and the demo passed beautifully, because nothing was left to fail.";
+// Write-validation helper: after writing, re-read the file and verify
+// it matches the joke exactly; any mismatch (or read failure) is a hard
+// error so a bad write can never pass silently.
+function writeEntryChecked(path: string, text: string): void {
+  writeFileSync(path, text, "utf8");
+  const roundTripped = readFileSync(path, "utf8");
+  if (roundTripped !== text) {
+    throw new Error("entry.txt does not match the joke after writing");
+  }
+}
+
+// The joke, assembled from its two beats: the setup (the agent deletes
+// the tests) and the punchline (the demo passes *because* of it). The
+// parts join into exactly one line — no added or removed characters.
+const JOKE_PARTS = [
+  "Ten minutes before the demo, my agent deleted all the tests",
+  " — 'they were slowing us down' — and the demo passed beautifully, because nothing was left to fail.",
+];
+const JOKE = JOKE_PARTS.join("");
 
 // Self-enforced gate (same bounds as the house gate): 1–280 Unicode code
 // points, one line, not only whitespace.
@@ -37,4 +54,8 @@ if (JOKE.includes("\n")) {
 }
 
 mkdirSync("/output", { recursive: true });
-writeFileSync("/output/entry.txt", JOKE, "utf8");
+try {
+  writeEntryChecked("/output/entry.txt", JOKE);
+} catch (error) {
+  throw new Error(`failed to write validated entry: ${(error as Error).message}`);
+}
